@@ -12,6 +12,12 @@ class Message {
 	/** @type{string} */
 	this.method;
 	/** @type{?string} */
+	this.text;
+	/** @type{?string} */
 	this.clue;
+        /** @type{?Object<string, Array<string>>} */
+        this.chunks;
+        /** @type{?Array<Array<string>>} */
+        this.targets;
     }
 }

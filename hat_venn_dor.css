@@ -46,3 +46,25 @@
 #puzz img#preload {
     display: none;
 }
+
+.chunk {
+    font-family: 'Merriweather Sans', sans-serif;
+    font-size: 84%;
+    font-weight: 700;
+    color: white;
+    padding: 1px 6px;
+    margin: 0px 1px;
+    border-radius: 4px;
+}
+
+.mine { background-color: green; }
+.notmine { background-color: grey; }
+
+.drag-in { background-color: yellow; }
+
+.target {
+    width: 300px;
+    height: 40px;
+    border: 1px solid grey;
+}
+

@@ -5,6 +5,7 @@ import asyncio
 import collections
 import json
 import os
+import random
 import time
 import unicodedata
 
@@ -13,6 +14,8 @@ import tornado.web
 
 import scrum
 
+import pprint
+
 Word = collections.namedtuple("Word", ("answer", "chunks", "clue"))
 
 class VennSet:
@@ -20,6 +23,14 @@ class VennSet:
     self.words = []
     self.finalanswer = finalanswer
     self.index = index
+    self.all_chunks = []
+
+    used = set()
+
+    self.chunk_sortkey = {}
+
+    sort_order = list(range(6))
+    random.shuffle(sort_order)
 
     for line in text.split("\n"):
       line = line.strip()
@@ -28,11 +39,37 @@ class VennSet:
 
       chunks = tuple(chunks.split("-"))
       answer = "".join(chunks)
+      so = sort_order.pop()
+
+      for i, c in enumerate(chunks):
+        assert c not in used, f"Duplicate chunk {c}"
+        used.add(c)
+        self.chunk_sortkey[c] = so*100 + i
 
       self.words.append(Word(answer, chunks, clue))
+      self.all_chunks.extend(chunks)
     assert len(self.words) == 6
 
+  def get_chunks(self):
+    return self._ChunkSource(self)
 
+  class _ChunkSource:
+    def __init__(self, vs):
+      self.vs = vs
+      self.pending = []
+
+    def __iter__(self): return self
+
+    def __next__(self):
+      if not self.pending:
+        self.pending = self.vs.all_chunks[:]
+        random.shuffle(self.pending)
+      return self.pending.pop()
+
+    def recycle(self, chunks):
+      temp = list(chunks)
+      random.shuffle(temp)
+      self.pending.extend(temp)
 
 class Message:
   def __init__(self, serial, message):
@@ -64,6 +101,7 @@ class GameState:
   def __init__(self, team):
     self.team = team
     self.sessions = set()
+    self.wid_sessions = {}
     self.running = False
     self.cond = asyncio.Condition()
 
@@ -81,6 +119,7 @@ class GameState:
 
   async def on_wait(self, session, wid):
     now = time.time()
+    wid = f"w{wid}"
     self.widq.append((wid, now))
 
     count = self.wids[wid] = self.wids.get(wid, 0) + 1
@@ -91,6 +130,8 @@ class GameState:
 
     if len(self.widq) > 1000:
       await self.purge(now)
+
+    self.wid_sessions[wid] = session
 
     async with self.cond:
       if session not in self.sessions:
@@ -113,10 +154,12 @@ class GameState:
 
   async def run_game(self):
     for vs in self.venn_sets:
+      self.current_vs = vs
+
       # clue phase
       for w in vs.words:
         self.current_word = w
-        d = {"method": "show_clue", "html": w.clue}
+        d = {"method": "show_clue", "clue": w.clue}
         await self.team.send_messages([d], sticky=1)
 
         async with self.cond:
@@ -125,10 +168,44 @@ class GameState:
 
         break  # skip words
 
+      chunks_per_user = max((len(vs.all_chunks)+1) // len(self.wids), 3)
+      chunks_per_user = min(chunks_per_user, len(vs.all_chunks))
+      self.assignment = {}
+      get_chunks = vs.get_chunks()
+
       # venn phase
+      self.targets = [[] for i in range(6)]
+
       while True:
-        wids = list(self.wids.keys())
-        print(f"wid set: {wids}")
+        to_delete = set()
+        for wid in self.assignment:
+          if wid not in self.wids:
+            to_delete.add(wid)
+        if to_delete:
+          for wid in to_delete:
+            get_chunks.recycle(self.assignment.pop(wid).keys())
+          # Remove any chunks a purged wid had in the targets.
+          for i in range(len(self.targets)):
+            self.targets[i] = [x for x in self.targets[i] if x[1] not in to_delete]
+
+        for wid in self.wids:
+          if wid not in self.assignment:
+            d = self.assignment[wid] = {}
+            while len(d) < chunks_per_user:
+              c = next(get_chunks)
+              print(c, d)
+              if c not in d:
+                d[c] = None
+        import pprint
+        pprint.pprint(self.assignment)
+
+        d = {"method": "venn_state",
+             "chunks": dict((k, list(v.keys())) for (k, v) in self.assignment.items()),
+             "targets": self.targets}
+
+        pprint.pprint(d)
+
+        await self.team.send_messages([d], sticky=1)
 
         async with self.cond:
           await self.cond.wait()
@@ -139,11 +216,34 @@ class GameState:
 
   async def try_answer(self, answer):
     async with self.cond:
-      print(answer, self.current_word.answer)
       if (self.current_word not in self.solved and
           answer == self.current_word.answer):
         self.solved.add(self.current_word)
         self.cond.notify_all()
+
+  async def place_chunk(self, session, wid, chunk, target):
+    if self.wid_sessions.get(wid) != session:
+      print(f"bad wid {wid} for session")
+      return
+
+    print(f"wid {wid} placing {chunk} on {target}")
+
+    d = self.assignment.get(wid)
+    if not d: return
+    if chunk not in d:
+      print(f"  wid {wid} doesn't have {chunk}")
+      return
+
+    old_target = d[chunk]
+    if old_target is not None:
+      self.targets[old_target].remove((chunk, wid))
+    d[chunk] = target
+    if target is not None:
+      self.targets[target].append((chunk, wid))
+      self.targets[target].sort(key=lambda c: self.current_vs.chunk_sortkey[c[0]])
+
+    async with self.cond:
+      self.cond.notify_all()
 
 
 class HatVennDorApp(scrum.ScrumApp):
@@ -158,6 +258,19 @@ class HatVennDorApp(scrum.ScrumApp):
       self.add_callback(gs.run_game)
 
     await gs.on_wait(session, wid)
+
+
+class PlaceHandler(tornado.web.RequestHandler):
+  async def get(self, chunk, wid, target):
+    scrum_app = self.application.settings["scrum_app"]
+    team, session = await scrum_app.check_cookie(self)
+    gs = GameState.get_for_team(team)
+    if target == "bank":
+      target = None
+    else:
+      target = int(target, 10)
+    await gs.place_chunk(session, wid, chunk, target)
+    self.set_status(http.client.NO_CONTENT.value)
 
 
 class SubmitHandler(tornado.web.RequestHandler):
@@ -231,6 +344,7 @@ def make_app(options):
   handlers = [
     (r"/hatsubmit", SubmitHandler),
     (r"/hatopen", OpenHandler),
+    (r"/hatplace/([A-Z]+)/(w\d+)/(bank|\d+)", PlaceHandler),
   ]
   if options.debug:
     handlers.append((r"/hatdebug/(\S+)", DebugHandler))
