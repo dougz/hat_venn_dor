@@ -77,16 +77,16 @@ class HatVennDorDispatcher {
                                goog.bind(this.on_drag_over, this));
             goog.events.listen(this.targets[i], goog.events.EventType.DROP,
                                goog.bind(this.on_drop, this, i));
-            goog.events.listen(this.targets[i], goog.events.EventType.DRAGENTER,
-                               (e) => { goog.dom.classlist.add(e.target, "drag-in"); });
             goog.events.listen(this.targets[i], goog.events.EventType.DRAGLEAVE,
-                               (e) => { goog.dom.classlist.remove(e.target, "drag-in"); });
+                               goog.bind(this.on_drag_leave, this));
         }
 
         goog.events.listen(this.bank, goog.events.EventType.DRAGOVER,
                            goog.bind(this.on_drag_over, this));
         goog.events.listen(this.bank, goog.events.EventType.DROP,
                            goog.bind(this.on_drop, this, -1));
+        goog.events.listen(this.bank, goog.events.EventType.DRAGLEAVE,
+                           goog.bind(this.on_drag_leave, this));
     }
 
     /** @param{Message} msg */
@@ -104,11 +104,25 @@ class HatVennDorDispatcher {
     }
 
     on_drag_start(e) {
+        e.target.style.opacity = 0.4;
         this.transfer = e.target.id;
     }
 
+    on_drag_end(e) {
+        e.target.style.opacity = 1.0;
+        this.transfer = null;
+    }
+
+    on_drag_leave(e) {
+        goog.dom.classlist.remove(e.currentTarget, "drag-in");
+    }
+
     on_drag_over(e) {
-        e.preventDefault();
+        if (e.currentTarget.id == "bank" ||
+            goog.dom.classlist.contains(e.currentTarget, "target")) {
+            goog.dom.classlist.add(e.currentTarget, "drag-in");
+            e.preventDefault();
+        }
     }
 
     on_drop(t, e) {
@@ -119,17 +133,14 @@ class HatVennDorDispatcher {
         var el = goog.dom.getElement(this.transfer);
         el.parentNode.removeChild(el);
         e.currentTarget.appendChild(el);
-        this.transfer = null;
+        el.style.opacity = 1.0;
 
         var target = e.currentTarget.id;
-        console.log(target);
         if (target == "bank") {
             target = "bank";
         } else {
             target = target.substr(1);
         }
-
-        console.log("chunk " + chunk + " to " + target);
 
         goog.net.XhrIo.send("/hatplace/" + chunk + "/w" + waiter_id + "/" + target, function(e) {
 	    var code = e.target.getStatus();
@@ -148,7 +159,6 @@ class HatVennDorDispatcher {
 
         var chunks;
 
-        console.log(data);
         if (!this.have_chunks) {
             chunks = data.chunks["w" + waiter_id];
             if (chunks) {
@@ -160,6 +170,8 @@ class HatVennDorDispatcher {
                     this.bank.appendChild(el);
                     goog.events.listen(el, goog.events.EventType.DRAGSTART,
                                        goog.bind(this.on_drag_start, this));
+                    goog.events.listen(el, goog.events.EventType.DRAGEND,
+                                       goog.bind(this.on_drag_end, this));
                 }
             }
         }

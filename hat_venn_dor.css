@@ -49,17 +49,17 @@
 
 .chunk {
     font-family: 'Merriweather Sans', sans-serif;
-    font-size: 84%;
+    font-size: 100%;
     font-weight: 700;
     color: white;
     padding: 1px 6px;
     margin: 0px 1px;
-    border-radius: 4px;
 }
 
 .mine { background-color: green; }
 .notmine { background-color: grey; }
 
+#bank.drag-in { background-color: yellow; }
 .drag-in { background-color: yellow; }
 
 .target {
@@ -68,3 +68,36 @@
     border: 1px solid grey;
 }
 
+#venn {
+    width: 1000px;
+    height: 600px;
+    position: relative;
+    background-color: #ffffee;
+}
+.target {
+    position: absolute;
+    width: 300px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#t0 { left: 350px; top: 10px; }
+#t1 { left: 550px; top: 180px; }
+#t2 { left: 700px; top: 350px; }
+#t3 { left: 350px; top: 400px; }
+#t4 { left: 0px; top: 350px; }
+#t5 { left: 150px; top: 180px; }
+#bank {
+    width: 1000px;
+    height: 40px;
+    position: absolute;
+    bottom: 0px;
+    background-color: #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#bank .chunk { margin: 0px 2px; }
