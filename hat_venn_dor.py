@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import collections
+import itertools
 import json
 import os
 import random
@@ -21,6 +22,7 @@ Word = collections.namedtuple("Word", ("answer", "chunks", "clue"))
 class VennSet:
   def __init__(self, finalanswer, index, text):
     self.words = []
+    self.wordset = set()
     self.finalanswer = finalanswer
     self.index = index
     self.all_chunks = []
@@ -47,6 +49,7 @@ class VennSet:
         self.chunk_sortkey[c] = so*100 + i
 
       self.words.append(Word(answer, chunks, clue))
+      self.wordset.add(answer)
       self.all_chunks.extend(chunks)
     assert len(self.words) == 6
 
@@ -153,7 +156,7 @@ class GameState:
         self.cond.notify_all()
 
   async def run_game(self):
-    for vs in self.venn_sets:
+    for vs in itertools.cycle(self.venn_sets):
       self.current_vs = vs
 
       # clue phase
@@ -166,8 +169,6 @@ class GameState:
           while w not in self.solved:
             await self.cond.wait()
 
-        break  # skip words
-
       chunks_per_user = max((len(vs.all_chunks)+1) // len(self.wids), 3)
       chunks_per_user = min(chunks_per_user, len(vs.all_chunks))
       self.assignment = {}
@@ -175,8 +176,9 @@ class GameState:
 
       # venn phase
       self.targets = [[] for i in range(6)]
+      self.success = False
 
-      while True:
+      while not self.success:
         to_delete = set()
         for wid in self.assignment:
           if wid not in self.wids:
@@ -193,17 +195,12 @@ class GameState:
             d = self.assignment[wid] = {}
             while len(d) < chunks_per_user:
               c = next(get_chunks)
-              print(c, d)
               if c not in d:
                 d[c] = None
-        import pprint
-        pprint.pprint(self.assignment)
 
         d = {"method": "venn_state",
              "chunks": dict((k, list(v.keys())) for (k, v) in self.assignment.items()),
              "targets": self.targets}
-
-        pprint.pprint(d)
 
         await self.team.send_messages([d], sticky=1)
 
@@ -226,8 +223,6 @@ class GameState:
       print(f"bad wid {wid} for session")
       return
 
-    print(f"wid {wid} placing {chunk} on {target}")
-
     d = self.assignment.get(wid)
     if not d: return
     if chunk not in d:
@@ -242,8 +237,19 @@ class GameState:
       self.targets[target].append((chunk, wid))
       self.targets[target].sort(key=lambda c: self.current_vs.chunk_sortkey[c[0]])
 
+    self.check_targets()
+
     async with self.cond:
       self.cond.notify_all()
+
+  def check_targets(self):
+    wordset = set()
+    for t in self.targets:
+      wordset.add("".join(i[0] for i in t))
+
+    print(f"current set: {wordset}")
+    if wordset == self.current_vs.wordset:
+      self.success = True
 
 
 class HatVennDorApp(scrum.ScrumApp):
@@ -334,7 +340,55 @@ def make_app(options):
     TA-YL-OR    This guitar manufacturer based in El Cajon, California, is the (fittingly) preferred brand of 2014's top selling artist.
     JA-CKS-ON   The fictional son of Poseidon, he made his debut in 2005's <i>The Lightning Thief</i>.
     """),
-    )
+
+    VennSet("DUCK", 1, """
+    AN-GEL	In traditional Christianity, it belongs to one of three hierarchical Spheres.
+    BU-OY	This oddly-spelled piece of maritime equipment has a disputed etymology &mdash; possibly deriving from the Latin boia, or "chain".
+    CH-AM-EL-EON	In Chinese, this animal's name is biànsèlóng, which literally translates to "changing-color dragon".
+    OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
+    CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
+    RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
+    """),
+
+    VennSet("HERTZ", 2, """
+    APP-LE	This edible fruit has over 7,500 cultivars, including Jazz, Ambrosia, and Pink Lady.
+    FL-OUR	A commonly used name for a powder made by grinding a grain such as wheat.
+    PA-SC-AL	This computer programming language, widely used in the past as a teaching aid, was named for a French philosopher and mathematician.
+    MER-CK	One of the largest pharmaceutical manufactuerers in the world, this company was forced to recall the arthritis medication Vioxx in 2004.
+    VO-LT	Chevrolet introduced this hybrid model in 2010, and it has since gone on to be one of the top-selling plug-in electric cars in the world.
+    TES-LA	This eccentric scientist famously feuded with Edison over the best distribution method of electricity.
+    """),
+
+    VennSet("JORDAN", 4, """
+    AN-DOR-RA	This small landlocked country straddles the border between France and Spain.
+    JA-COB	In the Old Testament, he deceived his blind father and stole his older brother Esau's birthright.
+    AM-AZ-ON	This retail goods behemoth surpassed Microsoft as the most valuable public company in the world in 2019.
+    NI-GER	Not to be confused with its neighbor to the south, this West African country contains some of the world's largest uranium deposits.
+    CH-AD	This term for a small scrap of paper gained widespread public recognition in the aftermath of the 2000 US Presidential election.
+    CHA-RL-ES	Ten kings of France bore this name, more than any other except for Louis.
+    """),
+
+    VennSet("MERCURY", 2, """
+    CH-RY-SL-ER	This company gives its name to an Art Deco-style skyscraper in New York City, at one time the tallest building in the world.
+    BOW-IE	This knife, primarily used for fighting, was developed by Jim Black in the 1800s and typically features a crossguard and a sheath.
+    JU-NO	This movie about a pregnant teenager won the Academy Award for Best Original Screenplay in 2007.
+    SA-TU-RN	This Sega video game console was the 32-bit successor to the Genesis.
+    BE-NTL-EY	This ultra-luxury car manufacturer is perhaps best known for its logo, which features the letter "B" flanked by a pair of wings.
+    MA-RS	The 6th largest privately held company in the US, this candy manufacturer counts 3 Musketeers and Milky Way as two of its brands.
+    """),
+
+    VennSet("WOOD", 1, """
+    PL-AS-TIC	The "Great Pacific Garbage Patch" is mostly comprised of micro-particles of this.
+    WED-GE	A doorstop is an example of this, one of the six simple machines.
+    GAR-LA-ND	This one-time Supreme Court nominee shares his last name with a term for a decorative wreath of flowers.
+    DR-IV-ER	A chauffeur, or a program that allows hardware to communicate with a computer's operating system.
+    IR-ON	This element, also the name of a household appliance, is one of ten whose name and chemical symbol do not start with the same letter.
+    STO-NE	14 pounds equals one of these, if you're a Brit.
+    """),
+
+
+  )
+
 
   GameState.set_globals(options, venn_sets)
 

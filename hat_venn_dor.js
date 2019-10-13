@@ -101,6 +101,11 @@ class HatVennDorDispatcher {
         hat_venn_dor.venn.style.display = "none";
 
         hat_venn_dor.clue.innerHTML = msg.clue;
+
+        this.bank.innerHTML = "";
+        this.targets.forEach((el) => { el.innerHTML = ""; });
+        this.have_chunks = false;
+        this.transfer = null;
     }
 
     on_drag_start(e) {
