@@ -15,6 +15,8 @@ class Message {
 	this.text;
 	/** @type{?string} */
 	this.clue;
+	/** @type{?string} */
+	this.answer;
         /** @type{?Object<string, Array<string>>} */
         this.chunks;
         /** @type{?Array<Array<string>>} */

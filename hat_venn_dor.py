@@ -20,9 +20,17 @@ import pprint
 Word = collections.namedtuple("Word", ("answer", "chunks", "clue"))
 
 class VennSet:
+  VENN_ORDER = {"1": 0,
+                "12": 1,
+                "2": 2,
+                "23": 3,
+                "3": 4,
+                "13": 5}
+
+  PERMUTATIONS = "012345 234501 450123 054321 432105 210543".split()
+
   def __init__(self, finalanswer, index, text):
-    self.words = []
-    self.wordset = set()
+    self.words = [None] * 6
     self.finalanswer = finalanswer
     self.index = index
     self.all_chunks = []
@@ -34,10 +42,18 @@ class VennSet:
     sort_order = list(range(6))
     random.shuffle(sort_order)
 
+    setmap = {}
+
     for line in text.split("\n"):
       line = line.strip()
       if not line: continue
-      chunks, clue = line.split(None, 1)
+      sets, chunks, clue = line.split(None, 2)
+
+      if len(sets) == 1:
+        setmap[sets] = str(len(setmap)+1)
+        sets = setmap[sets]
+      else:
+        sets = "".join(sorted([setmap[k] for k in sets]))
 
       chunks = tuple(chunks.split("-"))
       answer = "".join(chunks)
@@ -48,10 +64,19 @@ class VennSet:
         used.add(c)
         self.chunk_sortkey[c] = so*100 + i
 
-      self.words.append(Word(answer, chunks, clue))
-      self.wordset.add(answer)
+      self.words[self.VENN_ORDER[sets]] = Word(answer, chunks, clue)
       self.all_chunks.extend(chunks)
     assert len(self.words) == 6
+    self.clue_order = self.words[:]
+    self.clue_order.sort(key=lambda w: w.clue)
+    self.permutations = []
+
+    for p in self.PERMUTATIONS:
+      perm = ",".join(self.words[int(p[i])].answer for i in range(6))
+      self.permutations.append(perm)
+      print(perm)
+
+
 
   def get_chunks(self):
     return self._ChunkSource(self)
@@ -160,7 +185,7 @@ class GameState:
       self.current_vs = vs
 
       # clue phase
-      for w in vs.words:
+      for w in vs.clue_order:
         self.current_word = w
         d = {"method": "show_clue", "clue": w.clue}
         await self.team.send_messages([d], sticky=1)
@@ -169,6 +194,13 @@ class GameState:
           while w not in self.solved:
             await self.cond.wait()
 
+        d = {"method": "show_answer", "answer": w.answer}
+        await self.team.send_messages([d], sticky=1)
+        await asyncio.sleep(1.5)
+
+        break # XXX
+
+      print(f"chunks {len(vs.all_chunks)} players {len(self.wids)}")
       chunks_per_user = max((len(vs.all_chunks)+1) // len(self.wids), 3)
       chunks_per_user = min(chunks_per_user, len(vs.all_chunks))
       self.assignment = {}
@@ -243,12 +275,15 @@ class GameState:
       self.cond.notify_all()
 
   def check_targets(self):
-    wordset = set()
+    current = []
     for t in self.targets:
-      wordset.add("".join(i[0] for i in t))
+      a = "".join(i[0] for i in t)
+      if not a: return
+      current.append(a)
+    current = ",".join(current)
 
-    print(f"current set: {wordset}")
-    if wordset == self.current_vs.wordset:
+    print(f"current set: {current}")
+    if current in self.current_vs.permutations:
       self.success = True
 
 
@@ -333,57 +368,57 @@ class DebugHandler(tornado.web.RequestHandler):
 def make_app(options):
   venn_sets = (
     VennSet("MADISON", 3, """
-    MA-RY       She had a small farm animal according to one song, and was proud according to another.
-    ANN-APO-LIS This seaside city is the home of the US Naval Academy.
-    HO-OV-ER    Founded in 1908, this company's name has entered common parlance as a synonym for a vacuum cleaner.
-    HE-LE-NA    The first name of actress Bonham Carter, this word's origin comes from the Greek word for light.
-    TA-YL-OR    This guitar manufacturer based in El Cajon, California, is the (fittingly) preferred brand of 2014's top selling artist.
-    JA-CKS-ON   The fictional son of Poseidon, he made his debut in 2005's <i>The Lightning Thief</i>.
+    G  MA-RY       She had a small farm animal according to one song, and was proud according to another.
+    C  ANN-APO-LIS This seaside city is the home of the US Naval Academy.
+    P  HO-OV-ER    Founded in 1908, this company's name has entered common parlance as a synonym for a vacuum cleaner.
+    GC HE-LE-NA    The first name of actress Bonham Carter, this word's origin comes from the Greek word for light.
+    GP TA-YL-OR    This guitar manufacturer based in El Cajon, California, is the (fittingly) preferred brand of 2014's top selling artist.
+    PC JA-CKS-ON   The fictional son of Poseidon, he made his debut in 2005's <i>The Lightning Thief</i>.
     """),
 
     VennSet("DUCK", 1, """
-    AN-GEL	In traditional Christianity, it belongs to one of three hierarchical Spheres.
-    BU-OY	This oddly-spelled piece of maritime equipment has a disputed etymology &mdash; possibly deriving from the Latin boia, or "chain".
-    CH-AM-EL-EON	In Chinese, this animal's name is biànsèlóng, which literally translates to "changing-color dragon".
-    OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
-    CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
-    RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
+    T  AN-GEL	In traditional Christianity, it belongs to one of three hierarchical Spheres.
+    F  BU-OY	This oddly-spelled piece of maritime equipment has a disputed etymology &mdash; possibly deriving from the Latin boia, or "chain".
+    A  CH-AM-EL-EON	In Chinese, this animal's name is <i>biànsèlóng</i>, which literally translates to "changing-color dragon".
+    FA OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
+    TF CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
+    TA RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
     """),
 
     VennSet("HERTZ", 2, """
-    APP-LE	This edible fruit has over 7,500 cultivars, including Jazz, Ambrosia, and Pink Lady.
-    FL-OUR	A commonly used name for a powder made by grinding a grain such as wheat.
-    PA-SC-AL	This computer programming language, widely used in the past as a teaching aid, was named for a French philosopher and mathematician.
-    MER-CK	One of the largest pharmaceutical manufactuerers in the world, this company was forced to recall the arthritis medication Vioxx in 2004.
-    VO-LT	Chevrolet introduced this hybrid model in 2010, and it has since gone on to be one of the top-selling plug-in electric cars in the world.
-    TES-LA	This eccentric scientist famously feuded with Edison over the best distribution method of electricity.
+    C  APP-LE	This edible fruit has over 7,500 cultivars, including Jazz, Ambrosia, and Pink Lady.
+    H  FL-OUR	A commonly used name for a powder made by grinding a grain such as wheat.
+    U  PA-SC-AL	This computer programming language, widely used in the past as a teaching aid, was named for a French philosopher and mathematician.
+    CH MER-CK	One of the largest pharmaceutical manufactuerers in the world, this company was forced to recall the arthritis medication Vioxx in 2004.
+    HU JO-ULE	This English brewer and physicist spent much of his research trying to find the mechanical equivalent of heat.
+    UC TES-LA	This eccentric scientist famously feuded with Edison over the best distribution method of electricity.
     """),
 
     VennSet("JORDAN", 4, """
-    AN-DOR-RA	This small landlocked country straddles the border between France and Spain.
-    JA-COB	In the Old Testament, he deceived his blind father and stole his older brother Esau's birthright.
-    AM-AZ-ON	This retail goods behemoth surpassed Microsoft as the most valuable public company in the world in 2019.
-    NI-GER	Not to be confused with its neighbor to the south, this West African country contains some of the world's largest uranium deposits.
-    CH-AD	This term for a small scrap of paper gained widespread public recognition in the aftermath of the 2000 US Presidential election.
-    CHA-RL-ES	Ten kings of France bore this name, more than any other except for Louis.
+    C  AN-DOR-RA	This small landlocked country straddles the border between France and Spain.
+    B  JA-COB	In the Old Testament, he deceived his blind father and stole his older brother Esau's birthright.
+    R  AM-AZ-ON	This retail goods behemoth surpassed Microsoft as the most valuable public company in the world in 2019.
+    CR NI-GER	Not to be confused with its neighbor to the south, this West African country contains some of the world's largest uranium deposits.
+    CB CH-AD	This term for a small scrap of paper gained widespread public recognition in the aftermath of the 2000 US Presidential election.
+    BR CHA-RL-ES	Ten kings of France bore this name, more than any other except for Louis.
     """),
 
     VennSet("MERCURY", 2, """
-    CH-RY-SL-ER	This company gives its name to an Art Deco-style skyscraper in New York City, at one time the tallest building in the world.
-    BOW-IE	This knife, primarily used for fighting, was developed by Jim Black in the 1800s and typically features a crossguard and a sheath.
-    JU-NO	This movie about a pregnant teenager won the Academy Award for Best Original Screenplay in 2007.
-    SA-TU-RN	This Sega video game console was the 32-bit successor to the Genesis.
-    BE-NTL-EY	This ultra-luxury car manufacturer is perhaps best known for its logo, which features the letter "B" flanked by a pair of wings.
-    MA-RS	The 6th largest privately held company in the US, this candy manufacturer counts 3 Musketeers and Milky Way as two of its brands.
+    C  CH-RY-SL-ER	This company gives its name to an Art Deco-style skyscraper in New York City, at one time the tallest building in the world.
+    S  BOW-IE	This knife, primarily used for fighting, was developed by Jim Black in the 1800s and typically features a crossguard and a sheath.
+    G  JU-NO	This movie about a pregnant teenager won the Academy Award for Best Original Screenplay in 2007.
+    GC SA-TU-RN	This Sega video game console was the 32-bit successor to the Genesis.
+    SC BE-NTL-EY	This ultra-luxury car manufacturer is perhaps best known for its logo, which features the letter "B" flanked by a pair of wings.
+    GS MA-RS	The 6th largest privately held company in the US, this candy manufacturer counts 3 Musketeers and Milky Way as two of its brands.
     """),
 
     VennSet("WOOD", 1, """
-    PL-AS-TIC	The "Great Pacific Garbage Patch" is mostly comprised of micro-particles of this.
-    WED-GE	A doorstop is an example of this, one of the six simple machines.
-    GAR-LA-ND	This one-time Supreme Court nominee shares his last name with a term for a decorative wreath of flowers.
-    DR-IV-ER	A chauffeur, or a program that allows hardware to communicate with a computer's operating system.
-    IR-ON	This element, also the name of a household appliance, is one of ten whose name and chemical symbol do not start with the same letter.
-    STO-NE	14 pounds equals one of these, if you're a Brit.
+    M  PL-AS-TIC	The "Great Pacific Garbage Patch" is mostly comprised of micro-particles of this.
+    G  WED-GE	A doorstop is an example of this, one of the six simple machines.
+    A  GAR-LA-ND	This one-time Supreme Court nominee shares his last name with a term for a decorative wreath of flowers.
+    AG DR-IV-ER	A chauffeur, or a program that allows hardware to communicate with a computer's operating system.
+    MG IR-ON	This element, also the name of a household appliance, is one of ten whose name and chemical symbol do not start with the same letter.
+    MA STO-NE	14 pounds equals one of these, if you're a Brit.
     """),
 
 

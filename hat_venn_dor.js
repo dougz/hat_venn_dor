@@ -64,6 +64,7 @@ class HatVennDorDispatcher {
 	this.methods = {
 	    "add_chat": goog.bind(this.add_chat, this),
 	    "show_clue": goog.bind(this.show_clue, this),
+	    "show_answer": goog.bind(this.show_answer, this),
             "venn_state": goog.bind(this.venn_state, this),
 	}
 
@@ -98,14 +99,21 @@ class HatVennDorDispatcher {
     show_clue(msg) {
         hat_venn_dor.entry.style.display = "initial";
         hat_venn_dor.clue.style.display = "initial";
+        hat_venn_dor.clueanswer.style.display = "initial";
         hat_venn_dor.venn.style.display = "none";
 
         hat_venn_dor.clue.innerHTML = msg.clue;
+        hat_venn_dor.clueanswer.innerHTML = "\u00a0";
 
         this.bank.innerHTML = "";
         this.targets.forEach((el) => { el.innerHTML = ""; });
         this.have_chunks = false;
         this.transfer = null;
+    }
+
+    /** @param{Message} msg */
+    show_answer(msg) {
+        hat_venn_dor.clueanswer.innerHTML = msg.answer;
     }
 
     on_drag_start(e) {
@@ -160,6 +168,7 @@ class HatVennDorDispatcher {
     venn_state(data) {
         hat_venn_dor.entry.style.display = "none";
         hat_venn_dor.clue.style.display = "none";
+        hat_venn_dor.clueanswer.style.display = "none";
         hat_venn_dor.venn.style.display = "initial";
 
         var chunks;
@@ -253,6 +262,7 @@ var hat_venn_dor = {
     who: null,
     chat: null,
     clue: null,
+    clueanswer: null,
     venn: null,
 }
 
@@ -266,6 +276,7 @@ puzzle_init = function() {
     hat_venn_dor.who.value = localStorage.getItem("name");
     hat_venn_dor.chat = goog.dom.getElement("chat");
     hat_venn_dor.clue = goog.dom.getElement("clue");
+    hat_venn_dor.clueanswer = goog.dom.getElement("clueanswer");
     hat_venn_dor.venn = goog.dom.getElement("venn");
 
     goog.events.listen(goog.dom.getElement("text"),
