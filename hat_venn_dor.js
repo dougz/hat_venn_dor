@@ -66,6 +66,8 @@ class HatVennDorDispatcher {
 	    "show_clue": goog.bind(this.show_clue, this),
 	    "show_answer": goog.bind(this.show_answer, this),
             "venn_state": goog.bind(this.venn_state, this),
+            "venn_complete": goog.bind(this.venn_complete, this),
+            "center_complete": goog.bind(this.center_complete, this),
 	}
 
         this.have_chunks = false;
@@ -170,6 +172,8 @@ class HatVennDorDispatcher {
         hat_venn_dor.clue.style.display = "none";
         hat_venn_dor.clueanswer.style.display = "none";
         hat_venn_dor.venn.style.display = "initial";
+        hat_venn_dor.t6e.style.display = "none";
+        hat_venn_dor.t6a.style.display = "none";
 
         var chunks;
 
@@ -210,6 +214,34 @@ class HatVennDorDispatcher {
         }
     }
 
+    /** @param{Message} data */
+    venn_complete(data) {
+        hat_venn_dor.t6e.style.display = "initial";
+        hat_venn_dor.t6a.style.display = "none";
+
+        document.querySelectorAll("#puzz .chunk").forEach(
+            function(el) { el.parentNode.removeChild(el); });
+
+        for (var t = 0; t < 6; ++t) {
+            var tgt = goog.dom.getElement("t" + t);
+            tgt.innerHTML = data.targets[t];
+        }
+
+        hat_venn_dor.t6e.focus();
+    }
+
+    /** @param{Message} data */
+    center_complete(data) {
+        hat_venn_dor.t6e.style.display = "none";
+        hat_venn_dor.t6a.style.display = "initial";
+
+        for (var t = 0; t < 6; ++t) {
+            var tgt = goog.dom.getElement("t" + t);
+            tgt.innerHTML = data.targets[t];
+        }
+        hat_venn_dor.t6a.innerHTML = data.answer;
+    }
+
     /** @param{Message} msg */
     add_chat(msg) {
 	var curr = goog.dom.getChildren(hat_venn_dor.chat);
@@ -231,10 +263,10 @@ class HatVennDorDispatcher {
     }
 }
 
-function hat_venn_dor_submit(e) {
-    var answer = hat_venn_dor.text.value;
+function hat_venn_dor_submit(textel, e) {
+    var answer = textel.value;
     if (answer == "") return;
-    hat_venn_dor.text.value = "";
+    textel.value = "";
     var username = hat_venn_dor.who.value;
     localStorage.setItem("name", username);
     var msg = hat_venn_dor.serializer.serialize({"answer": answer, "who": username});
@@ -247,13 +279,11 @@ function hat_venn_dor_submit(e) {
     e.preventDefault();
 }
 
-
-function hat_venn_dor_onkeydown(e) {
+function hat_venn_dor_onkeydown(textel, e) {
     if (e.keyCode == goog.events.KeyCodes.ENTER) {
-	hat_venn_dor_submit(e);
+	hat_venn_dor_submit(textel, e);
     }
 }
-
 
 var hat_venn_dor = {
     waiter: null,
@@ -264,6 +294,8 @@ var hat_venn_dor = {
     clue: null,
     clueanswer: null,
     venn: null,
+    t6e: null,
+    t6a: null,
 }
 
 puzzle_init = function() {
@@ -278,13 +310,20 @@ puzzle_init = function() {
     hat_venn_dor.clue = goog.dom.getElement("clue");
     hat_venn_dor.clueanswer = goog.dom.getElement("clueanswer");
     hat_venn_dor.venn = goog.dom.getElement("venn");
+    hat_venn_dor.t6e = goog.dom.getElement("t6e");
+    hat_venn_dor.t6a = goog.dom.getElement("t6a");
 
     goog.events.listen(goog.dom.getElement("text"),
 		       goog.events.EventType.KEYDOWN,
-		       hat_venn_dor_onkeydown);
+		       goog.bind(hat_venn_dor_onkeydown, null, hat_venn_dor.text));
     goog.events.listen(goog.dom.getElement("hatsubmit"),
 		       goog.events.EventType.CLICK,
-		       hat_venn_dor_submit);
+                       goog.bind(hat_venn_dor_submit, null, hat_venn_dor.text));
+
+    goog.events.listen(hat_venn_dor.t6e,
+		       goog.events.EventType.KEYDOWN,
+		       goog.bind(hat_venn_dor_onkeydown, null, hat_venn_dor.t6e));
+
 
     hat_venn_dor.waiter = new HatVennDorWaiter(new HatVennDorDispatcher());
     hat_venn_dor.waiter.start();

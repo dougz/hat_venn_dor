@@ -62,12 +62,6 @@
 #puzz #bank.drag-in { background-color: yellow; }
 #puzz .drag-in { background-color: yellow; }
 
-#puzz .target {
-    width: 300px;
-    height: 40px;
-    border: 1px solid grey;
-}
-
 #puzz #venn {
     width: 1000px;
     height: 600px;
@@ -76,19 +70,31 @@
 }
 #puzz .target {
     position: absolute;
-    width: 300px;
+    border: 1px solid grey;
+    width: 240px;
     height: 30px;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-#puzz #t0 { left: 350px; top: 10px; }
-#puzz #t1 { left: 550px; top: 180px; }
-#puzz #t2 { left: 700px; top: 350px; }
-#puzz #t3 { left: 350px; top: 400px; }
-#puzz #t4 { left: 0px; top: 350px; }
-#puzz #t5 { left: 150px; top: 180px; }
+#puzz #t0 { left: 380px; top: 10px; }
+#puzz #t1 { left: 580px; top: 180px; }
+#puzz #t2 { left: 730px; top: 350px; }
+#puzz #t3 { left: 380px; top: 400px; }
+#puzz #t4 { left: 30px; top: 350px; }
+#puzz #t5 { left: 180px; top: 180px; }
+
+#puzz #t6e { left: 380px; top: 300px; text-align: center; }
+#puzz #t6a {
+    left: 380px;
+    top: 300px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 144%;
+    border: none;
+}
+
 #puzz #bank {
     width: 1000px;
     height: 40px;

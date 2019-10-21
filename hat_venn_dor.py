@@ -135,6 +135,7 @@ class GameState:
 
     self.current_word = None
     self.solved = set()
+    self.venn_centers = set()
     self.widq = collections.deque()
     self.wids = {}
 
@@ -185,6 +186,7 @@ class GameState:
       self.current_vs = vs
 
       # clue phase
+      self.phase = "clue"
       for w in vs.clue_order:
         self.current_word = w
         d = {"method": "show_clue", "clue": w.clue}
@@ -197,8 +199,6 @@ class GameState:
         d = {"method": "show_answer", "answer": w.answer}
         await self.team.send_messages([d], sticky=1)
         await asyncio.sleep(1.5)
-
-        break # XXX
 
       print(f"chunks {len(vs.all_chunks)} players {len(self.wids)}")
       chunks_per_user = max((len(vs.all_chunks)+1) // len(self.wids), 3)
@@ -233,11 +233,26 @@ class GameState:
         d = {"method": "venn_state",
              "chunks": dict((k, list(v.keys())) for (k, v) in self.assignment.items()),
              "targets": self.targets}
-
         await self.team.send_messages([d], sticky=1)
 
         async with self.cond:
           await self.cond.wait()
+
+      self.phase = "final"
+      d = {"method": "venn_complete",
+           "targets": ["".join(i[0] for i in t) for t in self.targets]}
+      await self.team.send_messages([d], sticky=1)
+
+      async with self.cond:
+        while vs.finalanswer not in self.venn_centers:
+          await self.cond.wait()
+
+      d = {"method": "center_complete",
+           "targets": ["".join(i[0] for i in t) for t in self.targets],
+           "answer": f"{vs.finalanswer} [{vs.index}]"}
+      await self.team.send_messages([d], sticky=1)
+
+      await asyncio.sleep(3.0)
 
   async def send_chat(self, text):
     d = {"method": "add_chat", "text": text}
@@ -245,10 +260,16 @@ class GameState:
 
   async def try_answer(self, answer):
     async with self.cond:
-      if (self.current_word not in self.solved and
-          answer == self.current_word.answer):
-        self.solved.add(self.current_word)
-        self.cond.notify_all()
+      if self.phase == "clue":
+        if (self.current_word not in self.solved and
+            answer == self.current_word.answer):
+          self.solved.add(self.current_word)
+          self.cond.notify_all()
+      elif self.phase == "final":
+        if (self.current_vs.finalanswer not in self.venn_centers and
+            answer == self.current_vs.finalanswer):
+          self.venn_centers.add(self.current_vs.finalanswer)
+          self.cond.notify_all()
 
   async def place_chunk(self, session, wid, chunk, target):
     if self.wid_sessions.get(wid) != session:
@@ -376,15 +397,6 @@ def make_app(options):
     PC JA-CKS-ON   The fictional son of Poseidon, he made his debut in 2005's <i>The Lightning Thief</i>.
     """),
 
-    VennSet("DUCK", 1, """
-    T  AN-GEL	In traditional Christianity, it belongs to one of three hierarchical Spheres.
-    F  BU-OY	This oddly-spelled piece of maritime equipment has a disputed etymology &mdash; possibly deriving from the Latin boia, or "chain".
-    A  CH-AM-EL-EON	In Chinese, this animal's name is <i>biànsèlóng</i>, which literally translates to "changing-color dragon".
-    FA OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
-    TF CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
-    TA RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
-    """),
-
     VennSet("HERTZ", 2, """
     C  APP-LE	This edible fruit has over 7,500 cultivars, including Jazz, Ambrosia, and Pink Lady.
     H  FL-OUR	A commonly used name for a powder made by grinding a grain such as wheat.
@@ -392,6 +404,15 @@ def make_app(options):
     CH MER-CK	One of the largest pharmaceutical manufactuerers in the world, this company was forced to recall the arthritis medication Vioxx in 2004.
     HU JO-ULE	This English brewer and physicist spent much of his research trying to find the mechanical equivalent of heat.
     UC TES-LA	This eccentric scientist famously feuded with Edison over the best distribution method of electricity.
+    """),
+
+    VennSet("DUCK", 1, """
+    T  AN-GEL	In traditional Christianity, it belongs to one of three hierarchical Spheres.
+    F  BU-OY	This oddly-spelled piece of maritime equipment has a disputed etymology &mdash; possibly deriving from the Latin boia, or "chain".
+    A  CH-AM-EL-EON	In Chinese, this animal's name is <i>biànsèlóng</i>, which literally translates to "changing-color dragon".
+    FA OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
+    TF CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
+    TA RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
     """),
 
     VennSet("JORDAN", 4, """
