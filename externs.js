@@ -21,5 +21,7 @@ class Message {
         this.chunks;
         /** @type{?Array<Array<string>>} */
         this.targets;
+        /** @type{?Array<string>} */
+        this.words;
     }
 }

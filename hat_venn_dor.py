@@ -74,30 +74,7 @@ class VennSet:
     for p in self.PERMUTATIONS:
       perm = ",".join(self.words[int(p[i])].answer for i in range(6))
       self.permutations.append(perm)
-      print(perm)
 
-
-
-  def get_chunks(self):
-    return self._ChunkSource(self)
-
-  class _ChunkSource:
-    def __init__(self, vs):
-      self.vs = vs
-      self.pending = []
-
-    def __iter__(self): return self
-
-    def __next__(self):
-      if not self.pending:
-        self.pending = self.vs.all_chunks[:]
-        random.shuffle(self.pending)
-      return self.pending.pop()
-
-    def recycle(self, chunks):
-      temp = list(chunks)
-      random.shuffle(temp)
-      self.pending.extend(temp)
 
 class Message:
   def __init__(self, serial, message):
@@ -200,11 +177,30 @@ class GameState:
         await self.team.send_messages([d], sticky=1)
         await asyncio.sleep(1.5)
 
-      print(f"chunks {len(vs.all_chunks)} players {len(self.wids)}")
-      chunks_per_user = max((len(vs.all_chunks)+1) // len(self.wids), 3)
-      chunks_per_user = min(chunks_per_user, len(vs.all_chunks))
-      self.assignment = {}
-      get_chunks = vs.get_chunks()
+        break # XXX
+
+
+      # divide chunks into min_size sets
+      chunk_sets = [[] for i in range(self.min_size)]
+      for i, ch in enumerate(vs.all_chunks):
+        chunk_sets[i % len(chunk_sets)].append(ch)
+
+      x = [tuple(cs) for cs in chunk_sets]
+      random.shuffle(x)
+      chunk_set_counts = {0: x}
+      chunk_set_uses = {}
+
+      def get_chunk_set():
+        for c in range(100):
+          x = chunk_set_counts[c]
+          if x:
+            r = x.pop()
+            chunk_set_uses[r] = c+1
+            chunk_set_counts.setdefault(c+1, []).append(r)
+            return r
+
+      self.assignment = {}  # wid: chunk_set
+      self.placement = {}   # wid: {chunk: location}
 
       # venn phase
       self.targets = [[] for i in range(6)]
@@ -217,27 +213,33 @@ class GameState:
             to_delete.add(wid)
         if to_delete:
           for wid in to_delete:
-            get_chunks.recycle(self.assignment.pop(wid).keys())
+            self.placement.pop(wid)
+            chunk_set = self.assignment.pop(wid)
+            c = chunk_set_uses[chunk_set]
+            chunk_set_counts[c].remove(chunk_set)
+            chunk_set_counts[c-1].append(chunk_set)
+            chunk_set_uses[chunk_set] = c-1
+
           # Remove any chunks a purged wid had in the targets.
           for i in range(len(self.targets)):
             self.targets[i] = [x for x in self.targets[i] if x[1] not in to_delete]
 
         for wid in self.wids:
           if wid not in self.assignment:
-            d = self.assignment[wid] = {}
-            while len(d) < chunks_per_user:
-              c = next(get_chunks)
-              if c not in d:
-                d[c] = None
+            chunk_set = get_chunk_set()
+            self.assignment[wid] = chunk_set
+            self.placement[wid] = dict((k, None) for k in chunk_set)
 
         d = {"method": "venn_state",
-             "chunks": dict((k, list(v.keys())) for (k, v) in self.assignment.items()),
-             "targets": self.targets}
+             "chunks": self.assignment,
+             "targets": self.targets,
+             "words": [i[0] for i in vs.clue_order]}
         await self.team.send_messages([d], sticky=1)
 
         async with self.cond:
           await self.cond.wait()
 
+      # prompt for the center entry
       self.phase = "final"
       d = {"method": "venn_complete",
            "targets": ["".join(i[0] for i in t) for t in self.targets]}
@@ -247,9 +249,10 @@ class GameState:
         while vs.finalanswer not in self.venn_centers:
           await self.cond.wait()
 
+      # display the center entry to everyone
       d = {"method": "center_complete",
            "targets": ["".join(i[0] for i in t) for t in self.targets],
-           "answer": f"{vs.finalanswer} [{vs.index}]"}
+           "answer": vs.finalanswer}
       await self.team.send_messages([d], sticky=1)
 
       await asyncio.sleep(3.0)
@@ -276,7 +279,7 @@ class GameState:
       print(f"bad wid {wid} for session")
       return
 
-    d = self.assignment.get(wid)
+    d = self.placement.get(wid)
     if not d: return
     if chunk not in d:
       print(f"  wid {wid} doesn't have {chunk}")

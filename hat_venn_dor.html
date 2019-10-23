@@ -19,6 +19,21 @@
       <button id=hatsubmit>Submit</button>
     </div>
     <div id=venn>
+      <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="800"
+           viewBox="0 0 1000 800">
+        <g transform="translate(500 380) scale(1.1) translate(-500 -400)">
+          <g fill="#999">
+            <circle cx="500" cy="500" r="250"></circle>
+            <circle cx="375" cy="300" r="210"></circle>
+            <circle cx="625" cy="300" r="210"></circle>
+          </g>
+          <g fill="none" stroke="#666" stroke-width="3">
+            <circle cx="500" cy="500" r="250"></circle>
+            <circle cx="375" cy="300" r="210"></circle>
+            <circle cx="625" cy="300" r="210"></circle>
+          </g>
+        </g>
+      </svg>
       <div id=t0 class=target></div>
       <div id=t1 class=target></div>
       <div id=t2 class=target></div>
@@ -27,6 +42,7 @@
       <div id=t5 class=target></div>
       <input type=text id=t6e class=target maxlength="20"></input>
       <div id=t6a class=target></div>
+      <div id=words></div>
       <div id=bank></div>
     </div>
   </body>

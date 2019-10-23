@@ -76,6 +76,7 @@ class HatVennDorDispatcher {
 
         this.targets = document.querySelectorAll("#puzz .target");
         for (var i = 0; i < this.targets.length; ++i) {
+            console.log("target", this.targets[i]);
             goog.events.listen(this.targets[i], goog.events.EventType.DRAGOVER,
                                goog.bind(this.on_drag_over, this));
             goog.events.listen(this.targets[i], goog.events.EventType.DROP,
@@ -133,6 +134,7 @@ class HatVennDorDispatcher {
     }
 
     on_drag_over(e) {
+        console.log(e.currentTarget);
         if (e.currentTarget.id == "bank" ||
             goog.dom.classlist.contains(e.currentTarget, "target")) {
             goog.dom.classlist.add(e.currentTarget, "drag-in");
@@ -191,6 +193,13 @@ class HatVennDorDispatcher {
                     goog.events.listen(el, goog.events.EventType.DRAGEND,
                                        goog.bind(this.on_drag_end, this));
                 }
+            }
+
+            console.log(data);
+            hat_venn_dor.words.innerHTML = "";
+            for (var i = 0; i < data.words.length; ++i) {
+                hat_venn_dor.words.appendChild(
+                    goog.dom.createDom("DIV", null, data.words[i]));
             }
         }
 
@@ -296,6 +305,7 @@ var hat_venn_dor = {
     venn: null,
     t6e: null,
     t6a: null,
+    words: null,
 }
 
 puzzle_init = function() {
@@ -312,6 +322,7 @@ puzzle_init = function() {
     hat_venn_dor.venn = goog.dom.getElement("venn");
     hat_venn_dor.t6e = goog.dom.getElement("t6e");
     hat_venn_dor.t6a = goog.dom.getElement("t6a");
+    hat_venn_dor.words = goog.dom.getElement("words");
 
     goog.events.listen(goog.dom.getElement("text"),
 		       goog.events.EventType.KEYDOWN,
