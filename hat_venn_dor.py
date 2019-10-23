@@ -119,7 +119,7 @@ class GameState:
     if self.options.min_players is not None:
       self.min_size = self.options.min_players
     else:
-      self.min_size = (team.size + 1) // 2
+      self.min_size = max(2, (team.size + 1) // 4)
       if self.min_size > 20:
         self.min_size = 20
 
@@ -159,7 +159,18 @@ class GameState:
         self.cond.notify_all()
 
   async def run_game(self):
-    for vs in itertools.cycle(self.venn_sets):
+    while True:
+      count = len(self.sessions)
+      if count >= self.min_size: break
+      text = (
+        f"You need {self.min_size} people to enter the hat shop.<br>"
+        f"{count} {'is' if count == 1 else 'are'} currently waiting.")
+      msg = {"method": "show_message", "text": text}
+      await self.team.send_messages([msg], sticky=1)
+      async with self.cond:
+        await self.cond.wait()
+
+    for vs in self.venn_sets:
       self.current_vs = vs
 
       # clue phase
@@ -176,9 +187,6 @@ class GameState:
         d = {"method": "show_answer", "answer": w.answer}
         await self.team.send_messages([d], sticky=1)
         await asyncio.sleep(1.5)
-
-        break # XXX
-
 
       # divide chunks into min_size sets
       chunk_sets = [[] for i in range(self.min_size)]
@@ -254,8 +262,14 @@ class GameState:
            "targets": ["".join(i[0] for i in t) for t in self.targets],
            "answer": vs.finalanswer}
       await self.team.send_messages([d], sticky=1)
-
       await asyncio.sleep(3.0)
+
+    text = ["Imagine small hat graphics labeled with a word and a price tag.<br>"]
+    for vs in self.venn_sets:
+      text.append(f"{vs.finalanswer}: ${vs.index}")
+    msg = {"method": "show_message", "text": "<br>".join(text)}
+    await self.team.send_messages([msg], sticky=1)
+
 
   async def send_chat(self, text):
     d = {"method": "add_chat", "text": text}
@@ -391,40 +405,13 @@ class DebugHandler(tornado.web.RequestHandler):
 
 def make_app(options):
   venn_sets = (
-    VennSet("MADISON", 3, """
-    G  MA-RY       She had a small farm animal according to one song, and was proud according to another.
-    C  ANN-APO-LIS This seaside city is the home of the US Naval Academy.
-    P  HO-OV-ER    Founded in 1908, this company's name has entered common parlance as a synonym for a vacuum cleaner.
-    GC HE-LE-NA    The first name of actress Bonham Carter, this word's origin comes from the Greek word for light.
-    GP TA-YL-OR    This guitar manufacturer based in El Cajon, California, is the (fittingly) preferred brand of 2014's top selling artist.
-    PC JA-CKS-ON   The fictional son of Poseidon, he made his debut in 2005's <i>The Lightning Thief</i>.
-    """),
-
-    VennSet("HERTZ", 2, """
-    C  APP-LE	This edible fruit has over 7,500 cultivars, including Jazz, Ambrosia, and Pink Lady.
-    H  FL-OUR	A commonly used name for a powder made by grinding a grain such as wheat.
-    U  PA-SC-AL	This computer programming language, widely used in the past as a teaching aid, was named for a French philosopher and mathematician.
-    CH MER-CK	One of the largest pharmaceutical manufactuerers in the world, this company was forced to recall the arthritis medication Vioxx in 2004.
-    HU JO-ULE	This English brewer and physicist spent much of his research trying to find the mechanical equivalent of heat.
-    UC TES-LA	This eccentric scientist famously feuded with Edison over the best distribution method of electricity.
-    """),
-
-    VennSet("DUCK", 1, """
-    T  AN-GEL	In traditional Christianity, it belongs to one of three hierarchical Spheres.
-    F  BU-OY	This oddly-spelled piece of maritime equipment has a disputed etymology &mdash; possibly deriving from the Latin boia, or "chain".
-    A  CH-AM-EL-EON	In Chinese, this animal's name is <i>biànsèlóng</i>, which literally translates to "changing-color dragon".
-    FA OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
-    TF CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
-    TA RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
-    """),
-
-    VennSet("JORDAN", 4, """
-    C  AN-DOR-RA	This small landlocked country straddles the border between France and Spain.
-    B  JA-COB	In the Old Testament, he deceived his blind father and stole his older brother Esau's birthright.
-    R  AM-AZ-ON	This retail goods behemoth surpassed Microsoft as the most valuable public company in the world in 2019.
-    CR NI-GER	Not to be confused with its neighbor to the south, this West African country contains some of the world's largest uranium deposits.
-    CB CH-AD	This term for a small scrap of paper gained widespread public recognition in the aftermath of the 2000 US Presidential election.
-    BR CHA-RL-ES	Ten kings of France bore this name, more than any other except for Louis.
+    VennSet("WOOD", 1, """
+    M  PL-AS-TIC	The "Great Pacific Garbage Patch" is mostly comprised of micro-particles of this.
+    G  WED-GE	A doorstop is an example of this, one of the six simple machines.
+    A  GAR-LA-ND	This one-time Supreme Court nominee shares his last name with a term for a decorative wreath of flowers.
+    AG DR-IV-ER	A chauffeur, or a program that allows hardware to communicate with a computer's operating system.
+    MG IR-ON	This element, also the name of a household appliance, is one of ten whose name and chemical symbol do not start with the same letter.
+    MA STO-NE	14 pounds equals one of these, if you're a Brit.
     """),
 
     VennSet("MERCURY", 2, """
@@ -436,18 +423,42 @@ def make_app(options):
     GS MA-RS	The 6th largest privately held company in the US, this candy manufacturer counts 3 Musketeers and Milky Way as two of its brands.
     """),
 
-    VennSet("WOOD", 1, """
-    M  PL-AS-TIC	The "Great Pacific Garbage Patch" is mostly comprised of micro-particles of this.
-    G  WED-GE	A doorstop is an example of this, one of the six simple machines.
-    A  GAR-LA-ND	This one-time Supreme Court nominee shares his last name with a term for a decorative wreath of flowers.
-    AG DR-IV-ER	A chauffeur, or a program that allows hardware to communicate with a computer's operating system.
-    MG IR-ON	This element, also the name of a household appliance, is one of ten whose name and chemical symbol do not start with the same letter.
-    MA STO-NE	14 pounds equals one of these, if you're a Brit.
+    VennSet("MADISON", 3, """
+    G  MA-RY       She had a small farm animal according to one song, and was proud according to another.
+    C  ANN-APO-LIS This seaside city is the home of the US Naval Academy.
+    P  HO-OV-ER    Founded in 1908, this company's name has entered common parlance as a synonym for a vacuum cleaner.
+    GC HE-LE-NA    The first name of actress Bonham Carter, this word's origin comes from the Greek word for light.
+    GP TA-YL-OR    This guitar manufacturer based in El Cajon, California, is the (fittingly) preferred brand of 2014's top selling artist.
+    PC JA-CKS-ON   The fictional son of Poseidon, he made his debut in 2005's <i>The Lightning Thief</i>.
     """),
 
+    VennSet("DUCK", 1, """
+    T  AN-GEL	In traditional Christianity, it belongs to one of three hierarchical Spheres.
+    F  BU-OY	This oddly-spelled piece of maritime equipment has a disputed etymology &mdash; possibly deriving from the Latin boia, or "chain".
+    A  CH-AM-EL-EON	In Chinese, this animal's name is <i>biànsèlóng</i>, which literally translates to "changing-color dragon".
+    FA OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
+    TF CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
+    TA RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
+    """),
 
+    VennSet("HERTZ", 2, """
+    C  APP-LE	This edible fruit has over 7,500 cultivars, including Jazz, Ambrosia, and Pink Lady.
+    H  FL-OUR	A commonly used name for a powder made by grinding a grain such as wheat.
+    U  PA-SC-AL	This computer programming language, widely used in the past as a teaching aid, was named for a French philosopher and mathematician.
+    CH MER-CK	One of the largest pharmaceutical manufacturers in the world, this company was forced to recall the arthritis medication Vioxx in 2004.
+    HU JO-ULE	This English brewer and physicist spent much of his research trying to find the mechanical equivalent of heat.
+    UC TES-LA	This eccentric scientist famously feuded with Edison over the best distribution method of electricity.
+    """),
+
+    VennSet("JORDAN", 4, """
+    C  AN-DOR-RA	This small landlocked country straddles the border between France and Spain.
+    B  JA-COB	In the Old Testament, he deceived his blind father and stole his older brother Esau's birthright.
+    R  AM-AZ-ON	This retail goods behemoth surpassed Microsoft as the most valuable public company in the world in 2019.
+    CR NI-GER	Not to be confused with its neighbor to the south, this West African country contains some of the world's largest uranium deposits.
+    CB CH-AD	This term for a small scrap of paper gained widespread public recognition in the aftermath of the 2000 US Presidential election.
+    BR CHA-RL-ES	Ten kings of France bore this name, more than any other except for Louis.
+    """),
   )
-
 
   GameState.set_globals(options, venn_sets)
 

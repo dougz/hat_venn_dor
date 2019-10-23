@@ -135,3 +135,9 @@
     font-size: 144%;
     padding: 16px;
 }
+
+#puzz #message {
+    text-align: center;
+    font-size: 120%;
+    font-weight: bold;
+}

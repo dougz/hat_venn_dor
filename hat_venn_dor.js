@@ -63,6 +63,7 @@ class HatVennDorDispatcher {
     constructor() {
 	this.methods = {
 	    "add_chat": goog.bind(this.add_chat, this),
+	    "show_message": goog.bind(this.show_message, this),
 	    "show_clue": goog.bind(this.show_clue, this),
 	    "show_answer": goog.bind(this.show_answer, this),
             "venn_state": goog.bind(this.venn_state, this),
@@ -76,7 +77,6 @@ class HatVennDorDispatcher {
 
         this.targets = document.querySelectorAll("#puzz .target");
         for (var i = 0; i < this.targets.length; ++i) {
-            console.log("target", this.targets[i]);
             goog.events.listen(this.targets[i], goog.events.EventType.DRAGOVER,
                                goog.bind(this.on_drag_over, this));
             goog.events.listen(this.targets[i], goog.events.EventType.DROP,
@@ -99,11 +99,21 @@ class HatVennDorDispatcher {
     }
 
     /** @param{Message} msg */
+    show_message(msg) {
+        hat_venn_dor.entry.style.display = "none";
+        hat_venn_dor.clue.style.display = "none";
+        hat_venn_dor.venn.style.display = "none";
+        hat_venn_dor.message.style.display = "initial";
+        hat_venn_dor.message.innerHTML = msg.text;
+    }
+
+    /** @param{Message} msg */
     show_clue(msg) {
         hat_venn_dor.entry.style.display = "initial";
         hat_venn_dor.clue.style.display = "initial";
         hat_venn_dor.clueanswer.style.display = "initial";
         hat_venn_dor.venn.style.display = "none";
+        hat_venn_dor.message.style.display = "none";
 
         hat_venn_dor.clue.innerHTML = msg.clue;
         hat_venn_dor.clueanswer.innerHTML = "\u00a0";
@@ -134,7 +144,6 @@ class HatVennDorDispatcher {
     }
 
     on_drag_over(e) {
-        console.log(e.currentTarget);
         if (e.currentTarget.id == "bank" ||
             goog.dom.classlist.contains(e.currentTarget, "target")) {
             goog.dom.classlist.add(e.currentTarget, "drag-in");
@@ -195,7 +204,6 @@ class HatVennDorDispatcher {
                 }
             }
 
-            console.log(data);
             hat_venn_dor.words.innerHTML = "";
             for (var i = 0; i < data.words.length; ++i) {
                 hat_venn_dor.words.appendChild(
@@ -297,6 +305,7 @@ function hat_venn_dor_onkeydown(textel, e) {
 var hat_venn_dor = {
     waiter: null,
     entry: null,
+    message: null,
     text: null,
     who: null,
     chat: null,
@@ -323,6 +332,7 @@ puzzle_init = function() {
     hat_venn_dor.t6e = goog.dom.getElement("t6e");
     hat_venn_dor.t6a = goog.dom.getElement("t6a");
     hat_venn_dor.words = goog.dom.getElement("words");
+    hat_venn_dor.message = goog.dom.getElement("message");
 
     goog.events.listen(goog.dom.getElement("text"),
 		       goog.events.EventType.KEYDOWN,
