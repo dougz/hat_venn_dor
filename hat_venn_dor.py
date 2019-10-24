@@ -247,10 +247,14 @@ class GameState:
         async with self.cond:
           await self.cond.wait()
 
+      target_words = ["".join(c[0] for i, c in enumerate(t)
+                               if i == 0 or c[0] != t[i-1][0])
+                      for t in self.targets]
+
       # prompt for the center entry
       self.phase = "final"
       d = {"method": "venn_complete",
-           "targets": ["".join(i[0] for i in t) for t in self.targets]}
+           "targets": target_words}
       await self.team.send_messages([d], sticky=1)
 
       async with self.cond:
@@ -259,7 +263,7 @@ class GameState:
 
       # display the center entry to everyone
       d = {"method": "center_complete",
-           "targets": ["".join(i[0] for i in t) for t in self.targets],
+           "targets": target_words,
            "answer": vs.finalanswer}
       await self.team.send_messages([d], sticky=1)
       await asyncio.sleep(3.0)
@@ -315,7 +319,7 @@ class GameState:
   def check_targets(self):
     current = []
     for t in self.targets:
-      a = "".join(i[0] for i in t)
+      a = "".join(c[0] for i, c in enumerate(t) if i == 0 or c[0] != t[i-1][0])
       if not a: return
       current.append(a)
     current = ",".join(current)

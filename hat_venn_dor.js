@@ -215,18 +215,26 @@ class HatVennDorDispatcher {
             function(el) { el.parentNode.removeChild(el); });
         for (var t = 0; t < 6; ++t) {
             chunks = data.targets[t];
+            chunks.push(["_", "_"]);
             var tgt = goog.dom.getElement("t" + t);
+            var last = null;
+            var mine = false;
             for (var i = 0; i < chunks.length; ++i) {
                 var c = chunks[i][0];
-                var w = chunks[i][1];
-                var el;
-                if (w == "w" + waiter_id) {
-                    el = goog.dom.getElement("chunk-" + c);
-                    el.parentNode.removeChild(el);
-                } else {
-                    el = goog.dom.createDom("SPAN", "chunk notmine", c);
+                if (c != last && last) {
+                    var el;
+                    if (mine) {
+                        el = goog.dom.getElement("chunk-" + last);
+                        el.parentNode.removeChild(el);
+                    } else {
+                        el = goog.dom.createDom("SPAN", "chunk notmine", last);
+                    }
+                    tgt.appendChild(el);
+
+                    mine = false;
                 }
-                tgt.appendChild(el);
+                last = c;
+                mine = mine || (chunks[i][1] == "w" + waiter_id);
             }
         }
     }
