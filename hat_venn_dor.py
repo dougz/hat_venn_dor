@@ -268,10 +268,8 @@ class GameState:
       await self.team.send_messages([d], sticky=1)
       await asyncio.sleep(3.0)
 
-    text = ["Imagine small hat graphics labeled with a word and a price tag.<br>"]
-    for vs in self.venn_sets:
-      text.append(f"{vs.finalanswer}: ${vs.index}")
-    msg = {"method": "show_message", "text": "<br>".join(text)}
+    text = f'<img src="{self.options.assets["endcard.png"]}">'
+    msg = {"method": "show_message", "text": text}
     await self.team.send_messages([msg], sticky=1)
 
 
@@ -499,9 +497,9 @@ def main():
 
   options = parser.parse_args()
 
-  # assert options.assets_json
-  # with open(options.assets_json) as f:
-  #   options.assets = json.load(f)
+  assert options.assets_json
+  with open(options.assets_json) as f:
+    options.assets = json.load(f)
 
   app = HatVennDorApp(options, make_app(options))
   app.start()

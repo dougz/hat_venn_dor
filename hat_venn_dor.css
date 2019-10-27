@@ -63,6 +63,7 @@
 #puzz .drag-in { background-color: yellow; }
 
 #puzz #venn {
+    display: none;
     width: 1000px;
     height: 840px;
     position: relative;

@@ -38,6 +38,10 @@ with zipfile.ZipFile("hat_venn_dor.zip", mode="w") as z:
     with open("metadata.yaml", "rb") as f_in:
       f_out.write(f_in.read())
 
+  with z.open("endcard.png", "w") as f_out:
+    with open("endcard.png", "rb") as f_in:
+      f_out.write(f_in.read())
+
   if not options.debug:
     with z.open("hat_venn_dor.css", "w") as f_out:
       with open("hat_venn_dor.css", "rb") as f_in:
