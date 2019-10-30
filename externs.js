@@ -19,7 +19,7 @@ class Message {
 	this.answer;
         /** @type{?Object<string, Array<string>>} */
         this.chunks;
-        /** @type{?Array<Array<string>>} */
+        /** @type{?Array<Array<Array<string>>>} */
         this.targets;
         /** @type{?Array<string>} */
         this.words;

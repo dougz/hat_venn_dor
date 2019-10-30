@@ -276,16 +276,6 @@ class HatVennDorDispatcher {
 	var el = goog.dom.createDom("P", null, msg.text);
 	hat_venn_dor.chat.appendChild(el);
     }
-
-    /** @param{Message} msg */
-    another_function(msg) {
-	var curr = goog.dom.getChildren(hat_venn_dor.chat);
-	if (curr.length > 3) {
-	    goog.dom.removeNode(curr[0]);
-	}
-	var el = goog.dom.createDom("P", null, msg.text + " " + waiter_id);
-	hat_venn_dor.chat.appendChild(el);
-    }
 }
 
 function hat_venn_dor_submit(textel, e) {
