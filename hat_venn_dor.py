@@ -486,8 +486,8 @@ def main():
   parser.add_argument("-c", "--cookie_secret",
                       default="snellen2020",
                       help="Secret used to create session cookies.")
-  parser.add_argument("--socket_path", default="/tmp/hatvenndor",
-                      help="Socket for requests from frontend.")
+  parser.add_argument("--listen_port", type=int, default=2001,
+                      help="Port requests from frontend.")
   parser.add_argument("--wait_url", default="hatwait",
                       help="Path for wait requests from frontend.")
   parser.add_argument("--main_server_port", type=int, default=2020,
