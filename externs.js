@@ -2,7 +2,7 @@
 var puzzle_init;
 
 /** @type{number} */
-var waiter_id;
+var wid;
 
 /** @type{Storage} */
 var localStorage;

@@ -2,6 +2,7 @@
 
 "${HUNT2020_BASE}/snellen/external/closure/bin/calcdeps.py" \
     -i "hat_venn_dor.js" \
+    -i "${HUNT2020_BASE}/snellen/src/common.js" \
     -p "${HUNT2020_BASE}/snellen/external/closure/" \
     --output_file "hat_venn_dor-compiled.js" \
     -o compiled \
