@@ -30,6 +30,9 @@ with zipfile.ZipFile("hat_venn_dor.zip", mode="w") as z:
     with open("solution.html", "rb") as f_in:
       f_out.write(f_in.read())
 
+  for count in range(1, 6+1):
+    z.write("solution/{}.svg".format(count))
+
   with z.open("for_ops.html", "w") as f_out:
     with open("for_ops.html", "rb") as f_in:
       f_out.write(f_in.read())
