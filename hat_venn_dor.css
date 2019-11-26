@@ -21,30 +21,8 @@
     margin: 4px 0 0 0;
 }
 
-
-#puzz div#entry {
-    display: none;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    margin-top: 40px;
-    text-align: center;
-    min-height: 90px;
-}
-
-#puzz input#text {
-    font-size: 144%;
-    width: 600px;
-}
-
-#puzz button#hatsubmit {
-    margin-left: 8px;
-    padding: 0 8px;
-    font-size: 144%;
-}
-
-#puzz img#preload {
-    display: none;
+#puzz .entryentry {
+    min-width: 600px;
 }
 
 #puzz .chunk {

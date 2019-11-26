@@ -56,7 +56,7 @@ class HatVennDorDispatcher {
 
     /** @param{Message} msg */
     show_clue(msg) {
-        hat_venn_dor.entry.style.display = "initial";
+        hat_venn_dor.entry.style.display = "flex";
         hat_venn_dor.clue.style.display = "initial";
         hat_venn_dor.clueanswer.style.display = "initial";
         hat_venn_dor.venn.style.display = "none";
