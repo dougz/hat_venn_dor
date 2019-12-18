@@ -2,8 +2,9 @@ shortname: hat_venn_dor
 title: Hat Venn-dor
 answer: WEDDED
 
-author:
+authors:
   - Yar Woo
+  - Doug Zongker
 
 oncall: dougz@isotropic.org
 puzzletron_id: 22

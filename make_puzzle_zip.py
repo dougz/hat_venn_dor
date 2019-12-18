@@ -45,6 +45,9 @@ with zipfile.ZipFile("hat_venn_dor.zip", mode="w") as z:
     with open("endcard.png", "rb") as f_in:
       f_out.write(f_in.read())
 
+  z.write("static_puzzle.html")
+  z.write("venn.jpg")
+
   if not options.debug:
     with z.open("hat_venn_dor.css", "w") as f_out:
       with open("hat_venn_dor.css", "rb") as f_in:
