@@ -50,7 +50,7 @@ venn_sets = [
     A  CH-AM-EL-EON	In Chinese, this animal's name is <i>biànsèlóng</i>, which literally translates to "changing-color dragon".
     FA OT-TER	This brand of freeze-them-yourself popsicles comes in such electrifying flavors as "Sir Isaac Lime" and "Alexander the Grape".
     TF CL-IPP-ER	You might hear this term for a fast-moving low pressure system the next time you get a manicure.
-    TA RA-M	This computer abbreviation is used to describe memory that allows data to retrieved in near-constant time regardless of where in memory that data lives.
+    TA RA-M	This computer abbreviation is used to describe memory that allows data to be retrieved in near-constant time regardless of where in memory that data lives.
     """),
 
     VennSet("HERTZ", 2, """
