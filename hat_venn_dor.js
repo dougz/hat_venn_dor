@@ -16,6 +16,7 @@ class HatVennDorDispatcher {
             "venn_state": goog.bind(this.venn_state, this),
             "venn_complete": goog.bind(this.venn_complete, this),
             "center_complete": goog.bind(this.center_complete, this),
+            "players": goog.bind(this.players, this),
 	}
 
         this.have_chunks = false;
@@ -43,6 +44,12 @@ class HatVennDorDispatcher {
     /** @param{Message} msg */
     dispatch(msg) {
 	this.methods[msg.method](msg);
+    }
+
+    /** @param{Message} msg */
+    players(msg) {
+        var el = goog.dom.getElement("players");
+        el.innerHTML = "<b>Players:</b> " + msg.players;
     }
 
     /** @param{Message} msg */
@@ -220,7 +227,8 @@ class HatVennDorDispatcher {
 	if (curr.length > 3) {
 	    goog.dom.removeNode(curr[0]);
 	}
-	var el = goog.dom.createDom("P", null, msg.text);
+	var el = goog.dom.createDom("P");
+        el.innerHTML = msg.text;
 	hat_venn_dor.chat.appendChild(el);
     }
 }
@@ -232,18 +240,22 @@ function hat_venn_dor_submit(textel, e) {
     var username = hat_venn_dor.who.value;
     localStorage.setItem("name", username);
     var msg = hat_venn_dor.serializer.serialize({"answer": answer, "who": username});
-    goog.net.XhrIo.send("/hatsubmit", function(e) {
-	var code = e.target.getStatus();
-	if (code != 204) {
-	    alert(e.target.getResponseText());
-	}
-    }, "POST", msg);
+    goog.net.XhrIo.send("/hatsubmit", Common_expect_204, "POST", msg);
     e.preventDefault();
 }
 
 function hat_venn_dor_onkeydown(textel, e) {
     if (e.keyCode == goog.events.KeyCodes.ENTER) {
 	hat_venn_dor_submit(textel, e);
+    }
+}
+
+function hat_venn_dor_send_name() {
+    var name = hat_venn_dor.who.value;
+    if (name != hat_venn_dor.sent_name) {
+        hat_venn_dor.sent_name = name;
+        var msg = hat_venn_dor.serializer.serialize({"who": name});
+        goog.net.XhrIo.send("/hatname", Common_expect_204, "POST", msg);
     }
 }
 
@@ -260,6 +272,7 @@ var hat_venn_dor = {
     t6e: null,
     t6a: null,
     words: null,
+    sent_name: null,
 }
 
 puzzle_init = function() {
@@ -294,5 +307,7 @@ puzzle_init = function() {
     hat_venn_dor.waiter = new Common_Waiter(
         new HatVennDorDispatcher(), "/hatwait", 0, null, null);
     hat_venn_dor.waiter.start();
+
+    setInterval(hat_venn_dor_send_name, 1000);
 }
 

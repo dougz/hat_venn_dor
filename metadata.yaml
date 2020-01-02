@@ -10,6 +10,7 @@ oncall: dougz@isotropic.org
 puzzletron_id: 22
 
 obfuscate_assets: true
+scrum: true
 
 for_ops_url: https://docs.google.com/document/d/1F7Vii4gfQXjhcnDtVBf1EHk04SeUERCIYS083DqwN7c/edit
 

@@ -23,5 +23,7 @@ class Message {
         this.targets;
         /** @type{?Array<string>} */
         this.words;
+	/** @type{?string} */
+	this.players;
     }
 }

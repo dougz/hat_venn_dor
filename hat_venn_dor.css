@@ -6,19 +6,21 @@
 }
 
 #puzz div#top {
-    height: 96px;
-    background-color: #ffeedd;
+    background-color: #eee;
     margin: 0 0 40px 0;
-    padding: 16px;
 }
 
-#puzz div#identify {
-    float: right;
+#puzz div#top > div {
+    margin: 16px;
+}
+
+#puzz div#row {
+    display: flex;
+    justify-content: space-between;
 }
 
 #puzz div#chat p {
-    font-size: 16px;
-    margin: 4px 0 0 0;
+    margin: 4px 0;
 }
 
 #puzz .entryentry {
