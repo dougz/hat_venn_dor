@@ -117,12 +117,7 @@ class GameState:
     self.widq = collections.deque()
     self.wids = {}
 
-    if self.options.min_players is not None:
-      self.min_size = self.options.min_players
-    else:
-      self.min_size = max(2, (team.size + 1) // 4)
-      if self.min_size > 20:
-        self.min_size = 20
+    self.min_size = scrum.default_min_players(self.options, team.size)
 
   async def on_wait(self, session, wid):
     now = time.time()
